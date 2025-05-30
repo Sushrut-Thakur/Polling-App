@@ -1,24 +1,41 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.db.models import F
+from django.urls import reverse
+from django.views import generic
 
-from .models import Question
+from .models import Question, Choice
 
 # Create your views here.
-def index(request):
-    latest_question_list = Question.objects.order_by("-pub_date")[:5]
-    context = {
-        "latest_question_list": latest_question_list,
-    }
+class IndexView(generic.ListView):
+    template_name = "polls/index.html"
+    context_object_name = "latest_question_list"
 
-    return render(request, template_name="polls/index.html", context=context)
+    def get_queryset(self):
+        return Question.objects.order_by("-pub_date")[:5]
+    
+class DetailView(generic.DetailView):
+    model = Question
+    template_name = "polls/detail.html"
 
-def detail(request, q_id):
-    question = get_object_or_404(Question, id=q_id)
-    return render(request, template_name="polls/detail.html", context={"question": question})
-
-def results(request, q_id):
-    resp = "You're looking at the results of question %s"
-    return HttpResponse(resp % q_id)
+class ResultsView(generic.DetailView):
+    model = Question
+    template_name = "polls/results.html"
 
 def vote(request, q_id):
-    return HttpResponse("You're voting on question %s" % q_id)
+    question = get_object_or_404(Question, pk=q_id)
+    try:
+        selected_choice = question.choices.get(pk=request.POST['choice'])
+    except (KeyError, Choice.DoesNotExist):
+        return render(
+            request,
+            "polls/detail.html",
+            context={
+                'question': question,
+                'error_message': "You haven't selected any option",
+            },
+        )
+    else:
+        selected_choice.votes = F('votes') + 1
+        selected_choice.save()
+        return HttpResponseRedirect(reverse("polls:results", args=(question.id,)))
