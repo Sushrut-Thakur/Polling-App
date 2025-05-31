@@ -15,7 +15,8 @@ class Question(models.Model):
         """
         CHeck if question was published less than a day ago
         """
-        return self.pub_date >= (timezone.now() - datetime.timedelta(days=1))
+        now = timezone.now()
+        return now >= self.pub_date >= (now - datetime.timedelta(days=1))
 
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="choices")
